@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexora | Mercado Cripto</title>
+    <style>
+        body { background-color: #0d1117; color: #c9d1d9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: auto; }
+        .header { text-align: center; border-bottom: 1px solid #30363d; padding-bottom: 20px; margin-bottom: 30px; }
+        .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+        .card { background-color: #161b22; padding: 20px; border-radius: 8px; border: 1px solid #30363d; }
+        .green { color: #3fb950; font-weight: bold; }
+        .red { color: #f85149; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #30363d; }
+        th { color: #8b949e; font-weight: normal; }
+        .fng-meter { font-size: 3em; text-align: center; margin: 15px 0; font-weight: bold; }
+        .news-item { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #30363d; }
+        .news-item a { color: #58a6ff; text-decoration: none; line-height: 1.4; display: block; }
+        .news-item a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Panel de Mercado Público</h1>
+            <p style="color: #8b949e;">Top 20 Criptomonedas por Volumen | Actualizado cada 5 minutos</p>
+        </div>
+        
+        <div class="grid">
+            <div class="card">
+                <h2>Top 20 Volumen (USDT)</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Activo</th>
+                            <th>Precio</th>
+                            <th>Cambio 24h</th>
+                            <th>Volumen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="market-data">
+                        <tr><td colspan="4" style="text-align:center;">Cargando datos del mercado...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div>
+                <div class="card" style="margin-bottom: 20px;">
+                    <h2>Índice Fear & Greed</h2>
+                    <div class="fng-meter" id="fng-value">--</div>
+                    <div style="text-align: center; color: #8b949e; font-size: 1.2em;" id="fng-class">Analizando sentimiento...</div>
+                </div>
+                
+                <div class="card">
+                    <h2>Últimas Noticias</h2>
+                    <div id="news-data" style="margin-top:15px;">
+                        <p style="text-align:center;">Buscando reportes...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadData() {
+            try {
+                const response = await fetch('/api/data');
+                const data = await response.json();
+                
+                // Actualizar FNG
+                const fngVal = document.getElementById('fng-value');
+                fngVal.innerText = data.fng.value;
+                fngVal.className = 'fng-meter ' + (parseInt(data.fng.value) > 50 ? 'green' : 'red');
+                document.getElementById('fng-class').innerText = data.fng.value_classification;
+                
+                // Actualizar Tabla de Mercado
+                let marketHTML = '';
+                data.top_20.forEach(coin => {
+                    const change = parseFloat(coin.priceChangePercent);
+                    const colorClass = change >= 0 ? 'green' : 'red';
+                    const price = parseFloat(coin.lastPrice);
+                    const formatPrice = price < 1 ? price.toFixed(6) : price.toFixed(2);
+                    const volume = (parseFloat(coin.quoteVolume) / 1000000).toFixed(2) + 'M';
+                    
+                    marketHTML += `<tr>
+                        <td><strong>${coin.symbol.replace('USDT', '')}</strong></td>
+                        <td>$${formatPrice}</td>
+                        <td class="${colorClass}">${change > 0 ? '+' : ''}${change.toFixed(2)}%</td>
+                        <td style="color:#8b949e;">$${volume}</td>
+                    </tr>`;
+                });
+                document.getElementById('market-data').innerHTML = marketHTML;
+                
+                // Actualizar Noticias
+                let newsHTML = '';
+                if(data.news.length === 0) newsHTML = '<p>No hay noticias recientes.</p>';
+                data.news.forEach(item => {
+                    newsHTML += `<div class="news-item">
+                        <a href="${item.link}" target="_blank">${item.title}</a>
+                    </div>`;
+                });
+                document.getElementById('news-data').innerHTML = newsHTML;
+                
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // Cargar inmediatamente y programar cada 5 minutos
+        loadData();
+        setInterval(loadData, 300000);
+    </script>
+</body>
+</html>
